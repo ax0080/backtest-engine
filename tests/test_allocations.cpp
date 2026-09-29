@@ -24,10 +24,17 @@ void* operator new(std::size_t n) {
     throw std::bad_alloc();
 }
 void* operator new[](std::size_t n) { return ::operator new(n); }
+void* operator new(std::size_t n, const std::nothrow_t&) noexcept {
+    if (g_counting) ++g_allocs;
+    return std::malloc(n ? n : 1);
+}
+void* operator new[](std::size_t n, const std::nothrow_t& t) noexcept { return ::operator new(n, t); }
 void  operator delete(void* p) noexcept { std::free(p); }
 void  operator delete[](void* p) noexcept { std::free(p); }
 void  operator delete(void* p, std::size_t) noexcept { std::free(p); }
 void  operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+void  operator delete(void* p, const std::nothrow_t&) noexcept { std::free(p); }
+void  operator delete[](void* p, const std::nothrow_t&) noexcept { std::free(p); }
 
 using namespace backtest;
 
