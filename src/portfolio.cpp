@@ -1,10 +1,16 @@
 #include "backtest/portfolio.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace backtest {
 
-Portfolio::Portfolio(double initial_cash) : cash_(initial_cash) {}
+Portfolio::Portfolio(double initial_cash, std::size_t num_symbols,
+                     std::size_t max_snapshots)
+    : cash_(initial_cash), positions_(num_symbols) {
+    equity_curve_.reserve(max_snapshots);
+    equity_ts_.reserve(max_snapshots);
+}
 
 void Portfolio::apply_fill(const Fill& fill) {
     double signed_qty = fill.side == Side::Buy ? fill.quantity : -fill.quantity;
@@ -26,15 +32,7 @@ void Portfolio::apply_fill(const Fill& fill) {
         double direction = pos.quantity > 0 ? 1.0 : -1.0;
         double pnl       = close_qty * (fill.price - pos.avg_price) * direction;
         pos.realized_pnl += pnl;
-
-        trades_.push_back({fill.symbol,
-                           pos.quantity > 0 ? Side::Buy : Side::Sell,
-                           close_qty,
-                           pos.avg_price,
-                           fill.price,
-                           pos.entry_time,
-                           fill.timestamp,
-                           pnl - fill.commission});
+        stats_.record(pnl - fill.commission);
 
         double remaining = std::abs(signed_qty) - close_qty;
         if (remaining < 1e-12) {
@@ -54,30 +52,14 @@ void Portfolio::apply_fill(const Fill& fill) {
     cash_ -= signed_qty * fill.price + fill.commission;
 }
 
-double Portfolio::position_qty(const std::string& symbol) const {
-    auto it = positions_.find(symbol);
-    return it == positions_.end() ? 0.0 : it->second.quantity;
-}
-
-Position Portfolio::position(const std::string& symbol) const {
-    auto it = positions_.find(symbol);
-    return it == positions_.end() ? Position{} : it->second;
-}
-
-double Portfolio::equity(
-        const std::unordered_map<std::string, double>& prices) const {
+double Portfolio::equity(std::span<const double> prices) const {
     double eq = cash_;
-    for (const auto& [sym, pos] : positions_) {
-        auto pit = prices.find(sym);
-        if (pit != prices.end())
-            eq += pos.quantity * pit->second;
-    }
+    for (std::size_t s = 0; s < positions_.size(); ++s)
+        eq += positions_[s].quantity * prices[s];
     return eq;
 }
 
-void Portfolio::snapshot(
-        Timestamp ts,
-        const std::unordered_map<std::string, double>& prices) {
+void Portfolio::snapshot(Timestamp ts, std::span<const double> prices) {
     equity_curve_.push_back(equity(prices));
     equity_ts_.push_back(ts);
 }

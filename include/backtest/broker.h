@@ -2,8 +2,9 @@
 
 #include "types.h"
 
+#include <algorithm>
 #include <cmath>
-#include <string>
+#include <cstdint>
 #include <vector>
 
 namespace backtest {
@@ -38,14 +39,18 @@ public:
            CommissionModel commission = {},
            SlippageModel slippage = {});
 
-    uint64_t submit_market(const std::string& symbol, Side side,
-                           double qty, Timestamp ts);
-    uint64_t submit_limit(const std::string& symbol, Side side,
-                          double qty, double price, Timestamp ts);
+    uint64_t submit_market(SymbolId symbol, Side side, double qty, Timestamp ts);
+    uint64_t submit_limit(SymbolId symbol, Side side, double qty, double price,
+                          Timestamp ts);
 
-    std::vector<Fill> process_bar(const std::string& symbol, const Bar& bar);
+    // Fills this symbol's pending orders against the bar, applies them to the
+    // portfolio and appends them to `out`. Allocates only if more orders are
+    // pending than the reserved capacity.
+    void process_bar(SymbolId symbol, const Bar& bar, std::vector<Fill>& out);
 
     void cancel_all();
+
+    static constexpr std::size_t kReservedOrders = 64;
 
 private:
     Portfolio&      portfolio_;

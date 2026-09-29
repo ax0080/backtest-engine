@@ -205,6 +205,44 @@ TEST(MetricsTest, SharpeSign) {
     EXPECT_GT(r.sharpe_ratio, 0);
 }
 
+// Two symbols with partly overlapping timestamps: one snapshot per distinct
+// timestamp, and each symbol's orders fill only on that symbol's bars.
+TEST(EngineTest, MultiSymbolMergedTimeline) {
+    BarSeries a, b;
+    const Timestamp day = 86400000;
+    for (int i = 0; i < 4; ++i) a.push_back({i * day, 100, 101, 99, 100, 1000});   // days 0-3
+    for (int i = 2; i < 6; ++i) b.push_back({i * day, 50, 51, 49, 60, 1000});      // days 2-5
+
+    class BuyBothOnce : public Strategy {
+        bool done_a_ = false, done_b_ = false;
+    public:
+        std::vector<std::string> filled;
+        void on_bar(const std::string& symbol, const Bar&) override {
+            if (symbol == "A" && !done_a_) { buy(symbol, 10); done_a_ = true; }
+            if (symbol == "B" && !done_b_) { buy(symbol, 10); done_b_ = true; }
+        }
+        void on_fill(const Fill& f) override { filled.push_back(symbol_name(f.symbol)); }
+    } strategy;
+
+    Engine engine(EngineConfig{100'000, {}, {}});
+    engine.add_data("A", a);
+    engine.add_data("B", b);
+    auto r = engine.run(strategy);
+
+    EXPECT_EQ(r.equity_curve.size(), 6u);
+    EXPECT_EQ(strategy.filled, (std::vector<std::string>{"A", "B"}));
+    // A: bought 10 @ 100, marked at 100. B: bought 10 @ 50, marked at 60.
+    EXPECT_NEAR(r.equity_curve.back(), 100'000 + 10 * (60 - 50), 1e-9);
+}
+
+TEST(EngineTest, RejectsUnsortedBars) {
+    BarSeries bars;
+    bars.push_back({2, 1, 1, 1, 1, 1});
+    bars.push_back({1, 1, 1, 1, 1, 1});
+    Engine engine;
+    EXPECT_THROW(engine.add_data("X", bars), std::invalid_argument);
+}
+
 TEST(MetricsTest, WinRateRange) {
     auto bars = SyntheticFeed::generate(2000, 100, 99);
     Engine engine(EngineConfig{1'000'000, {}, {}});

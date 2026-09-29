@@ -39,6 +39,7 @@ add_library(backtest
     src/portfolio.cpp
     src/engine.cpp
     src/metrics.cpp
+    src/kernels.cpp
 )
 target_include_directories(backtest PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -69,9 +70,14 @@ if(BACKTEST_BUILD_TESTS)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
 
-    add_executable(test_engine tests/test_engine.cpp)
+    add_executable(test_engine tests/test_engine.cpp tests/test_kernels.cpp)
     target_link_libraries(test_engine backtest GTest::gtest_main)
     add_test(NAME EngineTests COMMAND test_engine)
+
+    # Replaces global operator new, so it gets its own executable.
+    add_executable(test_allocations tests/test_allocations.cpp)
+    target_link_libraries(test_allocations backtest GTest::gtest_main)
+    add_test(NAME AllocationTests COMMAND test_allocations)
 endif()
 
 # ---------------------------------------------------------------------------

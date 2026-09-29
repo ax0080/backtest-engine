@@ -7,6 +7,7 @@
 namespace backtest {
 
 using Timestamp = int64_t;  // milliseconds since epoch
+using SymbolId  = uint32_t; // index in the order symbols were added to the Engine
 
 enum class Side { Buy, Sell };
 
@@ -22,23 +23,23 @@ struct Bar {
 enum class OrderType { Market, Limit };
 
 struct Order {
-    uint64_t    id = 0;
-    std::string symbol;
-    Side        side = Side::Buy;
-    OrderType   type = OrderType::Market;
-    double      quantity    = 0;
-    double      limit_price = 0;
-    Timestamp   timestamp   = 0;
+    uint64_t  id = 0;
+    SymbolId  symbol = 0;
+    Side      side = Side::Buy;
+    OrderType type = OrderType::Market;
+    double    quantity    = 0;
+    double    limit_price = 0;
+    Timestamp timestamp   = 0;
 };
 
 struct Fill {
-    uint64_t    order_id = 0;
-    std::string symbol;
-    Side        side = Side::Buy;
-    double      price      = 0;
-    double      quantity   = 0;
-    double      commission = 0;
-    Timestamp   timestamp  = 0;
+    uint64_t  order_id = 0;
+    SymbolId  symbol = 0;
+    Side      side = Side::Buy;
+    double    price      = 0;
+    double    quantity   = 0;
+    double    commission = 0;
+    Timestamp timestamp  = 0;
 };
 
 struct Position {
@@ -52,15 +53,20 @@ struct Position {
     }
 };
 
-struct RoundTrip {
-    std::string symbol;
-    Side        side = Side::Buy;
-    double      quantity    = 0;
-    double      entry_price = 0;
-    double      exit_price  = 0;
-    Timestamp   entry_time  = 0;
-    Timestamp   exit_time   = 0;
-    double      pnl = 0;
+// Round-trip statistics, accumulated as positions are reduced or closed.
+struct TradeStats {
+    int    count        = 0;
+    int    wins         = 0;
+    double gross_profit = 0;
+    double gross_loss   = 0;   // positive
+    double total_pnl    = 0;
+
+    void record(double pnl) {
+        ++count;
+        total_pnl += pnl;
+        if (pnl > 0) { ++wins; gross_profit += pnl; }
+        else         { gross_loss -= pnl; }
+    }
 };
 
 struct PerformanceReport {

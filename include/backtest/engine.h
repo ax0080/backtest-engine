@@ -8,9 +8,10 @@
 
 #include <concepts>
 #include <functional>
-#include <stdexcept>
+#include <span>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace backtest {
 
@@ -28,36 +29,43 @@ struct EngineConfig {
     SlippageModel   slippage;
 };
 
+// All run modes size their buffers before the bar loop starts. The number of
+// heap allocations per run is fixed, independent of the number of bars.
 class Engine {
 public:
     explicit Engine(const EngineConfig& config = {});
 
+    // Bars must be in ascending timestamp order.
     void add_data(const std::string& symbol, BarSeries bars);
 
-    // Event-driven backtest.
+    // Event-driven backtest over every symbol, merged by timestamp.
     PerformanceReport run(Strategy& strategy);
 
     // Vectorized backtest (single symbol).
     PerformanceReport run_vector(const std::string& symbol,
-                                VectorStrategy& strategy);
+                                 VectorStrategy& strategy);
 
-    // Vectorized from raw position array.
+    // Vectorized from a target position per bar.
     PerformanceReport run_signals(const std::string& symbol,
-                                 const std::vector<double>& positions);
+                                  std::span<const double> positions);
 
     // Vectorized from any callable (lambda, function object).
     template <SignalFunction F>
     PerformanceReport run_fn(const std::string& symbol, F&& fn) {
-        auto it = data_.find(symbol);
-        if (it == data_.end())
-            throw std::runtime_error("No data for symbol: " + symbol);
-        return run_signals(symbol,
-                           std::invoke(std::forward<F>(fn), it->second));
+        const auto& bars = data_[require(symbol)];
+        return run_signals(symbol, std::invoke(std::forward<F>(fn), bars));
     }
 
+    const std::string& symbol_name(SymbolId id) const { return names_[id]; }
+
 private:
-    EngineConfig config_;
-    std::unordered_map<std::string, BarSeries> data_;
+    SymbolId          require(const std::string& symbol) const;
+    PerformanceReport finish(Portfolio& portfolio) const;
+
+    EngineConfig                              config_;
+    std::vector<std::string>                  names_;
+    std::vector<BarSeries>                    data_;
+    std::unordered_map<std::string, SymbolId> ids_;
 };
 
 } // namespace backtest
