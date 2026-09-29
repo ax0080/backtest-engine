@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -35,8 +36,7 @@ PerformanceReport Engine::run(Strategy& strategy) {
         for (std::size_t i = 0; i < bars.size(); ++i)
             timeline.push_back({bars.timestamp[i], sym, i});
 
-    std::sort(timeline.begin(), timeline.end(),
-              [](const Entry& a, const Entry& b) { return a.ts < b.ts; });
+    std::ranges::sort(timeline, {}, &Entry::ts);
 
     strategy.on_init();
 

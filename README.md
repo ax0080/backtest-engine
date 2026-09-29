@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ax0080/backtest-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/ax0080/backtest-engine/actions/workflows/ci.yml)
 
-A dual-mode backtesting engine in C++17: event-driven and vectorized, sharing the same data, broker and metrics layer.
+A dual-mode backtesting engine in C++20: event-driven and vectorized, sharing the same data, broker and metrics layer.
 
 - **Event-driven mode:** the strategy receives one bar at a time and may submit orders through a simulated broker. Market orders fill at the next bar's open; limit orders fill when the bar's range crosses the limit price.
 - **Vectorized mode:** the strategy receives the full bar series as struct-of-arrays and returns a target position vector. The engine converts position changes to fills at the next bar's open. No virtual calls per bar.
@@ -24,7 +24,7 @@ ctest --test-dir build                # unit tests
 ./build/bench_engine
 ```
 
-Requires CMake 3.20+ and a C++17 compiler. GoogleTest and Google Benchmark are fetched automatically.
+Requires CMake 3.20+ and a C++20 compiler. GoogleTest and Google Benchmark are fetched automatically.
 
 ```cpp
 #include "backtest/data_feed.h"

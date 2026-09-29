@@ -116,5 +116,20 @@ int main() {
         print_report("Vectorized SMA(10,30)", report);
     }
 
+    // Lambda (C++20 concept-constrained)
+    {
+        Engine engine(cfg);
+        engine.add_data("SYN", bars);
+        auto report = engine.run_fn("SYN", [](const BarSeries& b) {
+            auto fast = sma(b.close, 10);
+            auto slow = sma(b.close, 30);
+            std::vector<double> pos(b.size(), 0.0);
+            for (std::size_t i = 30; i < b.size(); ++i)
+                pos[i] = fast[i] > slow[i] ? 100.0 : -100.0;
+            return pos;
+        });
+        print_report("Lambda SMA(10,30)", report);
+    }
+
     return 0;
 }

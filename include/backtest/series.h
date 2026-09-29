@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <span>
 #include <vector>
 
 namespace backtest {
@@ -48,7 +49,7 @@ struct BarSeries {
 
 // ---- Indicators (operate on contiguous double vectors) ---------------------
 
-inline std::vector<double> sma(const std::vector<double>& data, int period) {
+inline std::vector<double> sma(std::span<const double> data, int period) {
     std::vector<double> out(data.size(), 0.0);
     if (period <= 0 || data.size() < static_cast<std::size_t>(period)) return out;
 
@@ -63,7 +64,7 @@ inline std::vector<double> sma(const std::vector<double>& data, int period) {
     return out;
 }
 
-inline std::vector<double> ema(const std::vector<double>& data, int period) {
+inline std::vector<double> ema(std::span<const double> data, int period) {
     std::vector<double> out(data.size(), 0.0);
     if (period <= 0 || data.empty()) return out;
 
@@ -74,7 +75,7 @@ inline std::vector<double> ema(const std::vector<double>& data, int period) {
     return out;
 }
 
-inline std::vector<double> rsi(const std::vector<double>& data, int period = 14) {
+inline std::vector<double> rsi(std::span<const double> data, int period = 14) {
     std::vector<double> out(data.size(), 50.0);
     if (period <= 0 || data.size() < 2) return out;
 
@@ -102,8 +103,8 @@ inline std::vector<double> rsi(const std::vector<double>& data, int period = 14)
 }
 
 // +1 where a crosses above b, -1 where below, 0 otherwise.
-inline std::vector<int> crossover(const std::vector<double>& a,
-                                  const std::vector<double>& b) {
+inline std::vector<int> crossover(std::span<const double> a,
+                                  std::span<const double> b) {
     std::vector<int> out(a.size(), 0);
     std::size_t n = std::min(a.size(), b.size());
     for (std::size_t i = 1; i < n; ++i) {
